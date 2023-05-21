@@ -1,6 +1,6 @@
 # GPT OCR
 
-GPT OCR is a Python application that leverages the OpenAI GPT-3.5-turbo model to process and proofread text documents. The application is specifically designed for handling `.txt` files. It provides various functionalities such as navigating through a directory of text files, chunking the text for efficient processing, and communicating with the AI model interactively.
+GPT OCR is a Python application that leverages the OpenAI GPT-3.5-turbo model to process and proofread text documents produced from PDF OCR, Scan OCR etc. The application is specifically designed for handling `.txt` files. It provides various functionalities such as navigating through a directory of text files, chunking the text for efficient processing, and communicating with the AI model interactively.
 
 ## Installation
 To install the required libraries, you can use pip:
@@ -21,7 +21,7 @@ python main.py ocr --model MODEL --wrap WRAP --prompt_file PROMPT_FILE --base BA
 ```
 
 - `MODEL`: The model to use, default is `gpt-3.5-turbo`.
-- `WRAP`: The prompt isolation wrap, default is '\`\`\`<<PAYLOAD>>\`\`\`'.
+- `WRAP`: The prompt isolation wrap, default is '\`\`\`\<\<PAYLOAD\>\>\`\`\`'.
 - `PROMPT_FILE`: The input prompt file, default is `prompt.txt`.
 - `BASE`: The base directory to search for text files, default is `./data/papers/`.
 
@@ -38,9 +38,7 @@ Make sure you have a valid OpenAI API key stored in a file named `openaiapi.key`
 - **Error Handling**: The application includes handling for rate limit errors and invalid request errors.
 
 ## Contributing
-Pull requests are welcome. For significant changes, please open an issue first to discuss your proposed changes.
-
-Please ensure to update tests as appropriate.
+Pull requests are welcome. Please ensure to update tests as appropriate.
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
