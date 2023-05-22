@@ -1,14 +1,13 @@
-import click
-import openai
 import asyncio
 import textwrap
-import tiktoken
-
-from pycomfort.files import *
-from typing import List, Tuple
-from click import Context
 from pathlib import Path
 from time import sleep
+from typing import List, Tuple, Dict
+
+import click
+import openai
+import tiktoken
+from click import Context
 
 openai.api_key = open('openaiapi.key', 'r', encoding='utf-8').read()
 default_model = "gpt-3.5-turbo"
@@ -28,28 +27,28 @@ CHATCOMPLETION_OPTIONS = {
 }
 
 
-def generate_prompt_messages(message: str, prompt: str, dialog_messages: List[str]):
-    messages = [{"role": "system", "content": prompt}]
+def generate_prompt_messages(message: str, prompt: str, dialog_messages: List[Dict[str, str]]):
+    messages = [{"role": "system", "content": str(prompt)}]
     for dialog_message in dialog_messages:
-        messages.append({"role": "user", "content": dialog_message["user"]})
-        messages.append({"role": "assistant", "content": dialog_message["bot"]})
-    messages.append({"role": "user", "content": message})
+        messages.append({"role": "user", "content": str(dialog_message["user"])})
+        messages.append({"role": "assistant", "content": str(dialog_message["assistant"])})
+    messages.append({"role": "user", "content": str(message)})
 
     return messages
 
 
-async def prompt_ai(id: str, prompt: str, payload: str, model: str, wrap: str) -> Tuple[str, int, int]:
+async def prompt_ai(uid: str, prompt: str, payload: str, model: str, wrap: str) -> Tuple[str, int, int]:
     take = 0
     input_tokens = 0
     output_tokens = 0
-    message = wrap.replace(payload_keyword, payload)
+    message = wrap.replace(payload_keyword, payload).encode(encoding='ASCII', errors='ignore').decode()
     message = message.encode(encoding='ASCII', errors='ignore').decode()
     messages = generate_prompt_messages(message, prompt, [])
     answer = None
     while answer is None:
         try:
-            if take>2:
-                print(f"id={id}/try number {take+1} of {max_retry}!")
+            if take > 2:
+                print(f"id={uid}/try number {take + 1} of {max_retry}!")
 
             r = await openai.ChatCompletion.acreate(
                 model=model,
@@ -58,13 +57,13 @@ async def prompt_ai(id: str, prompt: str, payload: str, model: str, wrap: str) -
             )
             answer = r.choices[0].message["content"]
             input_tokens, output_tokens = r.usage.prompt_tokens, r.usage.completion_tokens
-        except openai.error.RateLimitError as e:
+        except openai.error.RateLimitError:
             sleep(5)
         except openai.error.InvalidRequestError as e:  # too many tokens
             take += 1
             if take >= max_retry:
                 raise e
-    print(f"id={id}/finished on try {take+1} of {max_retry}!")
+    print(f"id={id}/finished on try {take + 1} of {max_retry}!")
     return answer, input_tokens, output_tokens
 
 
@@ -79,6 +78,7 @@ async def prompt_in_chunks(text: str, prompt: str, model: str, wrap: str) -> Tup
     c_limit = prompt_cap - completion - num_tokens(prompt, model)  # both input and completion must fit
     act_size = c_limit
     size = c_limit
+    chunks = []
     while act_size >= c_limit:
         size = size - 1 - (act_size - size) // 4
         chunks = textwrap.wrap(text, size * 4)
@@ -87,10 +87,10 @@ async def prompt_in_chunks(text: str, prompt: str, model: str, wrap: str) -> Tup
             tokens = num_tokens(chunk, model)
             if act_size < tokens:
                 act_size = tokens
-        #print(f"{size}/{act_size}/{c_limit} - expectation/real size/limit")
+        # print(f"{size}/{act_size}/{c_limit} - expectation/real size/limit")
 
     print(f"expectation={size}/tokens={act_size}/limit={c_limit}/total_chunks={len(chunks)}")
-    tasks = [prompt_ai(f"ID_{i+1}", prompt, chunk, model, wrap) for i, chunk in enumerate(chunks)]
+    tasks = [prompt_ai(f"ID_{i + 1}", prompt, chunk, model, wrap) for i, chunk in enumerate(chunks)]
     results = await asyncio.gather(*tasks)
     joined_results = ''.join(result[0] for result in results)
     return joined_results, len(chunks)
@@ -109,6 +109,7 @@ def traverse_folder(folder: Path) -> List:
             continue
         texts.append(p)
     return texts
+
 
 async def write_async(model: str, keyword: str, prompt_file: str, base: str):
     texts = traverse_folder(Path(base))
